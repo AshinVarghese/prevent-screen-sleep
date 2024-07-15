@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen Wake Lock & Gradient Effect</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.5s ease;
+    }
+
+    .content {
+      text-align: center;
+    }
+
+    h1, p {
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .message {
+      color: #fff;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    /* Custom styles for the toggle switch */
+    .toggle-container {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+      margin-top: 20px;
+    }
+
+    .toggle-input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      background-color: #ccc;
+      border-radius: 20px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transition: background-color 0.4s;
+    }
+
+    .toggle-thumb {
+      background-color: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 30px;
+      height: 30px;
+      transition: transform 0.4s;
+    }
+
+    .toggle-input:checked + .toggle-track {
+      background-color: #2196F3;
+    }
+
+    .toggle-input:checked + .toggle-track + .toggle-thumb {
+      transform: translateX(calc(100% - 4px)); /* Adjust to center thumb */
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <h1>Screen Wake Lock</h1>
+    <label for="toggle" class="toggle-container">
+      <input type="checkbox" id="toggle" class="toggle-input">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+    <!-- <div class="message" id="message">Screen Wake Lock is OFF</div> -->
+  </div>
+
+  <script>
+    let wakeLock = null;
+    let color1 = '';
+    let color2 = '';
+    let idleTimeout;
+    let isIdle = false;
+    let animationFrameId;
+
+    // Function to request a wake lock
+    async function requestWakeLock() {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('Screen Wake Lock released:', wakeLock.released);
+        });
+        console.log('Screen Wake Lock is active');
+      } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    }
+
+    // Function to release the wake lock
+    function releaseWakeLock() {
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+          wakeLock = null;
+          console.log('Screen Wake Lock is released');
+        });
+      }
+    }
+
+    // Function to handle toggle switch
+    function toggleWakeLock(event) {
+      const isChecked = event.target.checked;
+      const message = document.getElementById('message');
+      if (isChecked) {
+        requestWakeLock();
+        // message.textContent = 'Screen Wake Lock is ON';
+      } else {
+        releaseWakeLock();
+        // message.textContent = 'Screen Wake Lock is OFF';
+      }
+    }
+
+    // Function to generate random color
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    // Function to set random colors for the gradient
+    function setRandomColors() {
+      color1 = getRandomColor();
+      color2 = getRandomColor();
+      document.body.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+    }
+
+    // Function to update the background gradient based on mouse position
+    function updateGradient(event) {
+      isIdle = false;
+      const mouseX = event.clientX;
+      const mouseY = event.clientY;
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      // Calculate the angle from mouse position to screen center
+      const angle = Math.atan2(mouseY - screenHeight / 2, mouseX - screenWidth / 2);
+      const angleInDegrees = angle * (180 / Math.PI);
+
+      // Use the calculated angle for the gradient direction
+      document.body.style.background = `linear-gradient(${angleInDegrees}deg, ${color1}, ${color2})`;
+
+      resetIdleTimer();
+    }
+
+    // Function to handle idle state and animate the gradient
+    function handleIdleState() {
+      isIdle = true;
+      let angle = 0;
+
+      function animateGradient() {
+        if (isIdle) {
+          angle += 0.5;
+          document.body.style.background = `linear-gradient(${angle}deg, ${color1}, ${color2})`;
+          animationFrameId = requestAnimationFrame(animateGradient);
+        }
+      }
+
+      animateGradient();
+    }
+
+    // Function to reset idle timer
+    function resetIdleTimer() {
+      clearTimeout(idleTimeout);
+      cancelAnimationFrame(animationFrameId);
+      idleTimeout = setTimeout(handleIdleState, 3000); // 3 seconds of inactivity
+    }
+
+    // Add event listener to toggle switch
+    document.getElementById('toggle').addEventListener('change', toggleWakeLock);
+
+    // Add event listener for mouse movement to update gradient
+    document.addEventListener('mousemove', updateGradient);
+
+    // Clean up wake lock on page unload
+    window.addEventListener('unload', releaseWakeLock);
+
+    // Set random colors and update gradient on page load
+    setRandomColors();
+    resetIdleTimer();
+  </script>
+</body>
+</html>
